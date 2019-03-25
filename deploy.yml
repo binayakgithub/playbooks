@@ -1,0 +1,100 @@
+---
+- hosts: tag_Name_Deploy*
+  #remote_user: ansible
+  #connection: ssh
+  #become: yes
+  tasks:
+        - name: Install pip
+          yum:
+            name: python-pip
+            state: latest
+
+        - name: Install docker-py
+          pip:
+            name: docker-py
+            state: latest
+
+        - name: Install yum-utils
+          yum:
+            name: yum-utils
+            state: latest
+
+        - name: Install device-mapper-persistent-data
+          yum:
+            name: device-mapper-persistent-data
+            state: latest
+
+        - name: Install lvm2
+          yum:
+            name: lvm2
+            state: latest
+
+        - name: Add Docker repo
+          get_url:
+            url: https://download.docker.com/linux/centos/docker-ce.repo
+            dest: /etc/yum.repos.d/docer-ce.repo
+
+        - name: Enable docker edge repo
+          ini_file:
+            dest: /etc/yum.repos.d/docer-ce.repo
+            section: 'docker-ce-edge'
+            option: enabled
+            value: 0
+
+        - name: Enable Docker Test repo
+          ini_file:
+            dest: /etc/yum.repos.d/docer-ce.repo
+            section: 'docker-ce-test'
+            option: enabled
+            value: 0
+
+        - name: Install Docker
+          yum:
+            name: docker-ce
+            state: latest
+
+        - name: start docker service
+          service:
+            name: docker
+            state: started
+
+
+
+- hosts: Deploy
+  #remote_user: centos
+  #become: true
+  #connection: ssh
+  vars:
+        - user: binayakredhat
+        - passwd: redhat
+        - name: login
+        - image: binayakredhat/accountlogin:2.0.0
+        - src_port: 8080
+        - dest_port: 8080
+        - privileged: true
+
+  tasks:
+        - name: Install pip
+          yum:
+            name: python-pip
+            state: latest
+
+        - name: Install docker-py
+          pip:
+            name: docker-py
+            state: latest
+
+#        - name: login to docker hub
+#          docker_login:
+#            username: '{{ user }}'
+#            password: '{{ passwd }}'
+        
+        - name: Create Container
+          docker_container:
+            name: '{{ name }}'
+            image: '{{ image }}'
+            state: started
+            interactive: yes
+            ports:
+              - "{{ src_port }}:{{ dest_port }}"
+            privileged: "{{ privileged }}"

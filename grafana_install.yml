@@ -1,0 +1,32 @@
+---
+- hosts: grafana
+  remote_user: centos
+  connection: ssh
+  become: true
+  tasks:
+        - name: Creating grafana repo
+          template:
+            src: /home/centos/project/grafanarepo.j2
+            dest: /etc/yum.repos.d/grafana.repo
+
+        - name: Installing grafana
+          yum:
+            name: grafana
+            state: present
+
+        - name: Reloading systemd daemon
+          systemd:
+            daemon_reload: yes
+
+        - name: Starting grafana service
+          service:
+            name: grafana-server
+            state: started
+            enabled: yes
+            
+        - name: Enabling port 3000 in firewall
+          firewalld:
+            port: 3000/tcp
+            state: enabled
+            permanent: yes
+            immediate: yes

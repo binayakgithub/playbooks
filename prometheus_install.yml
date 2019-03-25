@@ -1,0 +1,52 @@
+---
+- hosts: prometheus
+  remote_user: centos
+  connection: ssh
+  become: true
+  tasks:
+        - name: User Creation
+          user:
+            name: prometheus
+            shell: /bin/bash
+
+        - name: Downloading Prometheus
+          get_url:
+            url: https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz
+            dest: /home/prometheus
+        
+        - name: Extract prometheus-2.2.1.linux-amd64.tar.gz into /home/prometheus
+          unarchive:
+            src: /home/prometheus/prometheus-2.2.1.linux-amd64.tar.gz
+            dest: /home/prometheus
+            owner: prometheus
+            group: prometheus
+            remote_src: yes
+
+        - name: Renaming prometheus-2.2.1.linux-amd64 to prometheus
+          command: mv /home/prometheus/prometheus-2.2.1.linux-amd64 /home/prometheus/prometheus
+
+        - name: Creating a systemd service for prometheus
+          template:
+            src: /home/centos/project/prometheus.j2
+            dest: /etc/systemd/system/prometheus.service
+
+        - name: just force systemd to reread configs
+          systemd:
+            daemon_reload: yes
+
+        - name: Start Prometheus Service
+          service:
+            name: prometheus
+            state: started
+            enabled: yes
+
+        - name: Allowing 9090 port in Firewall
+          firewalld:
+            port: 9090/tcp
+            permanent: yes
+            state: enabled
+            immediate: yes
+
+
+
+

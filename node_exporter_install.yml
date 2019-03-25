@@ -1,0 +1,49 @@
+---
+- hosts: node_exporter
+  remote_user: centos
+  connection: ssh
+  become: true
+  tasks:
+
+        - name: Creating user
+          user:
+            name: prometheus
+            shell: /bin/bash
+
+        - name: Downloading node_exporter
+          get_url:
+            url: https://github.com/prometheus/node_exporter/releases/download/v0.16.0-rc.1/node_exporter-0.16.0-rc.1.linux-amd64.tar.gz
+            dest: /home/prometheus
+
+        - name: Extracting node_exporter-0.16.0-rc.1.linux-amd64.tar.gz into /tmp
+          unarchive:
+            src: /home/prometheus/node_exporter-0.16.0-rc.1.linux-amd64.tar.gz
+            dest: /home/prometheus
+            owner: prometheus
+            group: prometheus
+            remote_src: yes
+
+        - name: Renaming node_exporter-0.16.0-rc.1.linux-amd64 to node_exporter
+          command: mv /home/prometheus/node_exporter-0.16.0-rc.1.linux-amd64 /home/prometheus/node_exporter
+
+        - name: Creating systemd process for node_exporter
+          template:
+            src: /home/centos/project/node_exporter.j2
+            dest: /etc/systemd/system/node_exporter.service
+
+        - name: just force systemd to reload configs
+          systemd:
+            daemon_reload: yes
+
+        - name: Start node_exporter service
+          service:
+            name: node_exporter
+            state: started
+            enabled: yes
+
+        - name: Adding port 9100 to firewall
+          firewalld:
+            port: 9100/tcp
+            permanent: yes
+            state: enabled
+            immediate: yes
