@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  become: true
+  remote_user: ansible
+#  remote_connection: ssh
+  tasks:
+        - name: Changing working directory
+          shell: git clone --depth 50 https://github.com/ansible/awx.git
+          args:
+            chdir: /root
+#        - name: Cloning git repo
+#          command: git clone --depth 50 https://github.com/ansible/awx.gitv
