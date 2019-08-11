@@ -1,0 +1,116 @@
+---
+- hosts: all
+  become: true
+  remote_user: ansible
+#  remote_connection: ssh
+  vars:
+        packages:
+                - git
+                - gcc
+                - gcc-c++
+                - lvm2
+                - bzip2
+                - gettext
+                - nodejs
+                - yum-utils
+                - device-mapper-persistent-data
+                - ansible
+                - python-pip
+        packages_remove:
+                - docker
+                - docker-common
+                - docker-selinux
+                - docker-engine
+  tasks:
+        - name: Disable SElinux and reboot the server
+          lineinfile:
+                path: /etc/selinux/config
+                regexp: '^SELINUX='
+                line: 'SELINUX=disabled'
+
+        - name: Rebooting Host Machine
+          shell: 'sleep 2 && shutdown -r now'
+          async: 1
+          poll: 0
+          ignore_errors: yes
+
+        - name: Waiting for server to come back
+          become: false
+          local_action: wait_for host={{ inventory_hostname }} port=22 search_regex=OpenSSH state=started delay=5
+
+        - name: Configure EPEL Repo
+          yum:
+                name: epel-release
+                state: latest
+
+        - name: Install the dependency packages required for AWX
+          yum:
+                name: "{{ packages }}"
+                state: present
+#          with_items: "{{ packages }}}"
+
+        - name: Remove the old version of Docker on the server (if any)
+          yum:
+                name: "{{ packages_remove }}"
+                state: absent
+#          with_items: "{{ packages_remove }}"
+
+        - name: Adding Docker Repo
+          get_url:
+                url: https://download.docker.com/linux/centos/docker-ce.repo
+                dest: /etc/yum.repos.d/docer-ce.repo
+
+        - name: Install Docker
+          yum:
+                name: docker-ce
+                state: latest
+
+        - name: start docker service
+          service:
+                name: docker
+                state: started
+                enabled: yes
+
+        - name: Install docker SDK for python
+          pip:
+                name: docker
+                state: latest
+
+        - name: Install docker-compose
+          pip:
+                name: docker-compose
+                state: latest
+
+        - name: Cloning AWX git repository
+          shell: git clone --depth 50 https://github.com/ansible/awx.git
+          args:
+                chdir: /opt
+
+        - name: Reset the admin password
+          lineinfile:
+                path: /opt/awx/installer/inventory
+                regex: "^admin_password="
+                line: "admin_password=password"
+
+        - name: Generating a new random string, which will be used for secret_key
+          command: openssl rand -base64 30
+          register: pass_out
+
+#        - debug:
+#            var: pass_out.stdout
+
+        - name: replacing the secret_key in the inventory file with the random sequence created above
+          lineinfile:
+                path: /opt/awx/installer/inventory
+                regex: "^secret_key="
+                line: "secret_key={{ pass_out.stdout }}"
+
+        - name: Replacing docker_service module to docker_compose
+          lineinfile:
+                path: /opt/awx/installer/roles/local_docker/tasks/compose.yml
+                regex: "  docker_service:"
+                line: "  docker_compose:"
+        - name:
+          shell: ansible-playbook -i inventory install.yml
+          args:
+                chdir: /opt/awx/installer
