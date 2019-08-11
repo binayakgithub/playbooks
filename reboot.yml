@@ -1,0 +1,18 @@
+---
+- hosts: all
+  remote_user: ansible
+  become: true
+  tasks:
+   - name: Reboot host
+     shell: 'sleep 2 && shutdown -r now'
+     async: 1
+     poll: 0
+     ignore_errors: yes
+#   - pause: seconds=40
+   - name: Waiting for server to come back
+     become: false
+     local_action: wait_for host={{ inventory_hostname }} port=22 search_regex=OpenSSH state=started delay=5
+   - name: installing packages
+     yum:
+      name: httpd
+      state: latest
