@@ -1,0 +1,97 @@
+vim /etc/systemd/system/tomcat.service
+
+# Systemd unit file for tomcat
+[Unit]
+Description=Apache Tomcat Web Application Container
+After=syslog.target network.target
+
+[Service]
+Type=forking
+
+Environment=JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.242.b08-0.el7_7.x86_64/jre
+Environment=CATALINA_PID=/opt/tomcat8/temp/tomcat.pid
+Environment=CATALINA_HOME=/opt/tomcat8
+Environment=CATALINA_BASE=/opt/tomcat8
+Environment='CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC'
+Environment='JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom'
+
+ExecStart=/opt/tomcat8/bin/startup.sh
+ExecStop=/bin/kill -15 $MAINPID
+
+User=root
+Group=root
+UMask=0007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+
+###################################################################
+
+
+
+---
+- hosts: all
+  remote_user: centos
+  become: true
+  tasks:
+    - name: Downloading Artifacts from Nexus Repository
+      get_url:
+        url: http://13.58.47.72:8081/repository/test-snapshot/com/login/AccountLogin/1.0-SNAPSHOT/AccountLogin-1.0-20200224.135011-1.war
+        dest: /opt/artifacts
+    - name: Renaming the artifacts
+      shell: mv /opt/artifacts/*.war /opt/artifacts/login.war
+
+    - name: Deleting artifacts
+      file:
+        path: /opt/artifacts/AccountLogin-1.0-20200224.135011-1.war
+        state: absent
+#      command: rm -rf AccountLogin-1.0-20200224.135011-1.war
+
+    - name: Stopping Tomcat
+      service:
+        name: tomcat
+        state: stopped
+#    - name: Stopping tomcat server
+#      shell: ./shutdown.sh
+#      args:
+#        chdir: /opt/tomcat8/bin
+
+    - name: Taking backup of application logs
+      archive:
+        path: /opt/tomcat8/logs
+        dest: /opt/logs.tar.gz
+        format: gz
+        force_archive: true
+    - name: Deleting old logs
+      file:
+        path: /opt/tomcat8/logs/*
+        state: absent
+#      command: rm -rf /opt/tomcat8/logs/*
+
+    - name: Deleting old artifacts from tomcat server
+      file:
+        path: /opt/tomcat8/webapps/login
+        state: absent
+
+    - name: Deleting old artifacts from tomcat server
+      file:
+        path: /opt/tomcat8/webapps/login.war
+        state: absent
+#      command: rm -rf /opt/tomcat8/webapps/login*
+
+    - name: Deploy new artifact to tomcat
+      command: cp -rf /opt/artifacts/login.war /opt/tomcat8/webapps
+
+#    - command: chown centos:centos /opt/tomcat8/webapps/login.war
+
+    - name: Stopping Tomcat
+      service:
+        name: tomcat
+        state: started
+#    - name: Starting tomcat server
+#      shell: ./startup.sh
+#      args:
+#        chdir: /opt/tomcat8/bin
