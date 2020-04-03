@@ -3,7 +3,7 @@
  
   tasks:
   - name: Install apache packages 
-    apt-get:
+    apt:
       name: apache2
       state: present
   - name: ensure httpd is running
