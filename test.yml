@@ -4,9 +4,9 @@
   tasks:
   - name: Install apache packages 
     apt:
-      name: apache2
+      name: vsftpd
       state: present
   - name: ensure httpd is running
     service:
-      name: httpd 
+      name: vsftpd
       state: started
