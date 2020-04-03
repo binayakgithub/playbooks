@@ -1,5 +1,5 @@
 ---
-- hosts: “{{variable_host | default(‘web’)}}”
+- hosts: all
  
   tasks:
   - name: Install apache packages 
