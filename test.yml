@@ -2,7 +2,7 @@
 - hosts: all
  
   tasks:
-  - name: Install apache packages 
+  - name: User Creation
     user:
       name: kalia
       state: present
