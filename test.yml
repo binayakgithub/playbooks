@@ -3,10 +3,6 @@
  
   tasks:
   - name: Install apache packages 
-    apt:
-      name: vsftpd
+    user:
+      name: kalia
       state: present
-  - name: ensure httpd is running
-    service:
-      name: vsftpd
-      state: started
